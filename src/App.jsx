@@ -1,22 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const TankIcon = ({ direction = 'right' }) => {
-  const rotationDegrees = {
-    up: 270,
-    right: 0,
-    down: 90,
-    left: 180,
-  };
-
+  const rotationDegrees = { up: 270, right: 0, down: 90, left: 180 };
   return (
-    <svg
-      viewBox="0 0 16 16"
-      width="40"
-      height="40"
-      fill="none"
-      stroke="none"
-      style={{ transform: `rotate(${rotationDegrees[direction]}deg)` }}
-    >
+    <svg viewBox="0 0 16 16" width="40" height="40" fill="none" stroke="none"
+      style={{ transform: `rotate(${rotationDegrees[direction]}deg)` }}>
       <rect x="2" y="4" width="12" height="8" fill="#264653" />
       <rect x="1" y="11" width="14" height="2" fill="#2a9d8f" />
       <rect x="1" y="3" width="14" height="2" fill="#2a9d8f" />
@@ -29,9 +17,7 @@ const TankIcon = ({ direction = 'right' }) => {
 const TrackMark = ({ direction }) => {
   const isVertical = direction === 'up' || direction === 'down';
   return (
-    <div
-      className={`absolute ${isVertical ? 'w-3 h-4' : 'w-4 h-3'} flex justify-between opacity-30`}
-    >
+    <div className={`absolute ${isVertical ? 'w-3 h-4' : 'w-4 h-3'} flex justify-between opacity-30`}>
       <div className="bg-gray-700 w-1 h-full" />
       <div className="bg-gray-700 w-1 h-full" />
     </div>
@@ -106,14 +92,10 @@ const TankGame = () => {
       const newX = x + dx;
       const newY = y + dy;
       if (
-        newX >= 0 &&
-        newX < GRID_SIZE.width &&
-        newY >= 0 &&
-        newY < GRID_SIZE.height &&
+        newX >= 0 && newX < GRID_SIZE.width &&
+        newY >= 0 && newY < GRID_SIZE.height &&
         gameState.mines.some((mine) => mine.x === newX && mine.y === newY)
-      ) {
-        count++;
-      }
+      ) count++;
     });
     return count;
   };
@@ -128,21 +110,17 @@ const TankGame = () => {
         (x === 0 && y === 4) ||
         (x === flagPos.x && y === flagPos.y) ||
         mines.some((m) => m.x === x && m.y === y)
-      ) {
-        continue;
-      }
+      ) continue;
       mines.push({ x, y });
     }
     return mines;
   };
 
   const initializeLevel = useCallback((level) => {
-    const flagPos =
-      level < 5
-        ? { x: GRID_SIZE.width - 1, y: 4 }
-        : getRandomFlagPos([]);
+    const flagPos = level < 5
+      ? { x: GRID_SIZE.width - 1, y: 4 }
+      : getRandomFlagPos([]);
     const mines = generateMines(level, flagPos);
-
     setGameState({
       tankPos: { x: 0, y: 4 },
       tankDirection: 'right',
@@ -155,7 +133,6 @@ const TankGame = () => {
       visitedCells: new Set(['0,4']),
       trackMarks: new Map(),
     });
-
     if (level > highScore) {
       setHighScore(level);
       localStorage.setItem('tankGameHighScore', level.toString());
@@ -169,47 +146,34 @@ const TankGame = () => {
     let intervalId;
     if (gameState.level >= 5 && !gameState.gameOver && !gameState.won) {
       intervalId = setInterval(() => {
-        setGameState((prev) => ({
-          ...prev,
-          flagPos: getRandomFlagPos(prev.mines),
-        }));
+        setGameState((prev) => ({ ...prev, flagPos: getRandomFlagPos(prev.mines) }));
       }, 8000);
     }
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
+    return () => { if (intervalId) clearInterval(intervalId); };
   }, [gameState.level, gameState.gameOver, gameState.won, getRandomFlagPos]);
 
   const handleMove = useCallback((direction) => {
     setGameState((prev) => {
       if (prev.gameOver || prev.won) return prev;
-
       const newPos = { ...prev.tankPos };
       let moved = false;
-
       if (direction === 'up' && newPos.y > 0) { newPos.y -= 1; moved = true; }
       else if (direction === 'down' && newPos.y < GRID_SIZE.height - 1) { newPos.y += 1; moved = true; }
       else if (direction === 'left' && newPos.x > 0) { newPos.x -= 1; moved = true; }
       else if (direction === 'right' && newPos.x < GRID_SIZE.width - 1) { newPos.x += 1; moved = true; }
-
       if (!moved) return prev;
-
       const oldCellKey = `${prev.tankPos.x},${prev.tankPos.y}`;
       const newTrackMarks = new Map(prev.trackMarks);
       newTrackMarks.set(oldCellKey, direction);
-
       const newVisitedCells = new Set(prev.visitedCells);
       const newCellKey = `${newPos.x},${newPos.y}`;
       newVisitedCells.add(newCellKey);
-
       if (prev.mines.some((mine) => mine.x === newPos.x && mine.y === newPos.y)) {
         return { ...prev, gameOver: true, visitedCells: newVisitedCells, trackMarks: newTrackMarks };
       }
-
       if (newPos.x === prev.flagPos.x && newPos.y === prev.flagPos.y) {
         return { ...prev, won: true, visitedCells: newVisitedCells, trackMarks: newTrackMarks };
       }
-
       return {
         ...prev,
         tankPos: newPos,
@@ -229,15 +193,13 @@ const TankGame = () => {
       e.preventDefault();
       handleMove(direction);
     };
-
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleMove]);
 
   const renderGrid = () => {
-    const grid = [];
+    const cells = [];
     for (let y = 0; y < GRID_SIZE.height; y++) {
-      const row = [];
       for (let x = 0; x < GRID_SIZE.width; x++) {
         const cellKey = `${x},${y}`;
         const isTank = gameState.tankPos.x === x && gameState.tankPos.y === y;
@@ -246,102 +208,78 @@ const TankGame = () => {
         const isVisited = gameState.visitedCells.has(cellKey);
         const trackDirection = gameState.trackMarks.get(cellKey);
         const mineCount = countNearbyMines(x, y);
-
         const showMine = (gameState.gameOver || gameState.won) && isMine;
-
         const adjacentToTank =
           Math.abs(gameState.tankPos.x - x) <= 1 &&
           Math.abs(gameState.tankPos.y - y) <= 1;
-        const showMineCount =
-          !showMine &&
-          !isEnd &&
-          mineCount > 0 &&
-          (isVisited || adjacentToTank);
-
+        const showMineCount = !showMine && !isEnd && mineCount > 0 && (isVisited || adjacentToTank);
         const cellClasses = [
-          'w-20',
-          'h-20',
-          'border',
-          'flex',
-          'items-center',
-          'justify-center',
-          'relative',
+          'w-full', 'h-full', 'border', 'flex', 'items-center', 'justify-center', 'relative',
           isVisited ? 'bg-orange-200 border-orange-400' : 'bg-yellow-200 border-yellow-300',
           isTank ? 'bg-yellow-200' : '',
           isEnd ? 'bg-teal-500' : '',
-        ]
-          .filter(Boolean)
-          .join(' ');
-
-        row.push(
+        ].filter(Boolean).join(' ');
+        cells.push(
           <div key={cellKey} className={cellClasses}>
-            {isVisited && !isTank && trackDirection && (
-              <TrackMark direction={trackDirection} />
-            )}
+            {isVisited && !isTank && trackDirection && <TrackMark direction={trackDirection} />}
             <div className="relative w-full h-full flex items-center justify-center">
               {isTank && <TankIcon direction={gameState.tankDirection} />}
               {showMine && <MineIcon />}
               {isEnd && <FlagIcon />}
             </div>
             {showMineCount && (
-              <div className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 text-white font-bold text-lg">
+              <div className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-gray-700 text-white font-bold text-xs">
                 {mineCount}
               </div>
             )}
           </div>
         );
       }
-      grid.push(
-        <div key={y} className="flex">
-          {row}
-        </div>
-      );
     }
-    return grid;
+    return cells;
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-gray-800">
-      <div className="absolute top-0 left-0 p-4 text-sm font-semibold text-yellow-200">
-        idea by Sam
-      </div>
-
-      <div className="absolute top-0 right-0 p-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setShowInstructions(true)}
-          className="px-3 py-1 bg-yellow-500 text-white font-bold rounded hover:bg-gray-800 transition-colors"
-        >
-          Instructions
-        </button>
-        <button
-          type="button"
-          onClick={() => initializeLevel(1)}
-          className="px-3 py-1 bg-teal-500 text-white font-bold rounded hover:bg-gray-800 transition-colors"
-        >
-          New Game
-        </button>
-      </div>
-
-      <div className="flex flex-col items-center gap-6 p-8 rounded-lg w-full">
-        <div className="flex gap-4 text-lg font-bold text-yellow-200">
+    <div className="w-full min-h-screen bg-gray-800 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+        <div className="text-sm font-semibold text-yellow-200">idea by Sam</div>
+        <div className="flex gap-4 text-base font-bold text-yellow-200">
           <div>Level: {gameState.level}</div>
           <div>Moves: {gameState.moves}</div>
-          <div>High Score: Level {highScore}</div>
+          <div>Best: {highScore}</div>
         </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setShowInstructions(true)}
+            className="px-3 py-1 bg-yellow-500 text-white font-bold rounded hover:bg-yellow-400 transition-colors">
+            Instructions
+          </button>
+          <button type="button" onClick={() => initializeLevel(1)}
+            className="px-3 py-1 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
+            New Game
+          </button>
+        </div>
+      </div>
 
-        <div className="border-4 border-teal-500 p-4 bg-teal-500 rounded-lg shadow-xl">
-          {renderGrid()}
+      {/* Game area */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+        <div className="border-4 border-teal-500 rounded-lg shadow-xl overflow-hidden"
+          style={{ width: 'min(90vw, calc(100vh - 260px))', aspectRatio: '1 / 1' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${GRID_SIZE.width}, 1fr)`,
+            width: '100%',
+            height: '100%',
+          }}>
+            {renderGrid()}
+          </div>
         </div>
 
         {gameState.gameOver && (
           <div className="text-center">
             <div className="text-lg font-bold text-red-500">Game Over!</div>
-            <button
-              type="button"
-              onClick={() => initializeLevel(1)}
-              className="mt-2 px-3 py-1 bg-teal-500 text-white rounded hover:bg-gray-800 transition-colors"
-            >
+            <button type="button" onClick={() => initializeLevel(1)}
+              className="mt-2 px-3 py-1 bg-teal-500 text-white rounded hover:bg-teal-400 transition-colors">
               Try Again
             </button>
           </div>
@@ -349,47 +287,29 @@ const TankGame = () => {
 
         {gameState.won && (
           <div className="text-center">
-            <div className="text-lg font-bold text-teal-500">
-              Level {gameState.level} Complete!
-            </div>
-            <button
-              type="button"
-              onClick={() => initializeLevel(gameState.level + 1)}
-              className="mt-2 px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-gray-800 transition-colors"
-            >
+            <div className="text-lg font-bold text-teal-500">Level {gameState.level} Complete!</div>
+            <button type="button" onClick={() => initializeLevel(gameState.level + 1)}
+              className="mt-2 px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
               Next Level →
             </button>
           </div>
         )}
 
+        {/* D-pad */}
         <div className="flex flex-col items-center gap-1">
-          <button
-            type="button"
-            onClick={() => handleMove('up')}
-            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none"
-          >▲</button>
+          <button type="button" onClick={() => handleMove('up')}
+            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▲</button>
           <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => handleMove('left')}
-              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none"
-            >◀</button>
+            <button type="button" onClick={() => handleMove('left')}
+              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">◀</button>
             <div className="w-14 h-14" />
-            <button
-              type="button"
-              onClick={() => handleMove('right')}
-              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none"
-            >▶</button>
+            <button type="button" onClick={() => handleMove('right')}
+              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▶</button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleMove('down')}
-            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none"
-          >▼</button>
+          <button type="button" onClick={() => handleMove('down')}
+            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▼</button>
         </div>
-        <div className="text-sm text-yellow-200">
-          Use arrow keys or buttons to move the tank
-        </div>
+        <div className="text-sm text-yellow-200">Use arrow keys or buttons to move the tank</div>
       </div>
 
       {showInstructions && (
@@ -397,18 +317,15 @@ const TankGame = () => {
           <div className="bg-gray-800 p-6 rounded-lg max-w-md text-yellow-200">
             <h2 className="text-xl font-bold mb-4">How to Play</h2>
             <ul className="space-y-2 mb-4">
-              <li>• Use arrow keys to move your tank</li>
+              <li>• Use arrow keys or the D-pad to move your tank</li>
               <li>• Reach the flag to complete each level</li>
               <li>• Numbers show how many mines are nearby</li>
               <li>• After level 5, the flag will move every 8 seconds</li>
               <li>• Each level adds more mines (up to 12)</li>
               <li>• Try to reach the highest level possible!</li>
             </ul>
-            <button
-              type="button"
-              onClick={() => setShowInstructions(false)}
-              className="w-full px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-gray-800 transition-colors"
-            >
+            <button type="button" onClick={() => setShowInstructions(false)}
+              className="w-full px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
               Got it!
             </button>
           </div>
