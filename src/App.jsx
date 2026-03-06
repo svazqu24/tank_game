@@ -262,9 +262,9 @@ const TankGame = () => {
       </div>
 
       {/* Game area */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
-        <div className="border-4 border-teal-500 rounded-lg shadow-xl overflow-hidden"
-          style={{ width: 'min(90vw, calc(100vh - 260px))', aspectRatio: '1 / 1' }}>
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <div className="border-4 border-teal-500 rounded-lg shadow-xl overflow-hidden w-full h-full"
+          style={{ maxWidth: '100%', maxHeight: '100%', aspectRatio: '1 / 1' }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${GRID_SIZE.width}, 1fr)`,
@@ -276,7 +276,7 @@ const TankGame = () => {
         </div>
 
         {gameState.gameOver && (
-          <div className="text-center">
+          <div className="absolute text-center">
             <div className="text-lg font-bold text-red-500">Game Over!</div>
             <button type="button" onClick={() => initializeLevel(1)}
               className="mt-2 px-3 py-1 bg-teal-500 text-white rounded hover:bg-teal-400 transition-colors">
@@ -286,7 +286,7 @@ const TankGame = () => {
         )}
 
         {gameState.won && (
-          <div className="text-center">
+          <div className="absolute text-center">
             <div className="text-lg font-bold text-teal-500">Level {gameState.level} Complete!</div>
             <button type="button" onClick={() => initializeLevel(gameState.level + 1)}
               className="mt-2 px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
@@ -294,22 +294,6 @@ const TankGame = () => {
             </button>
           </div>
         )}
-
-        {/* D-pad */}
-        <div className="flex flex-col items-center gap-1">
-          <button type="button" onClick={() => handleMove('up')}
-            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▲</button>
-          <div className="flex gap-1">
-            <button type="button" onClick={() => handleMove('left')}
-              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">◀</button>
-            <div className="w-14 h-14" />
-            <button type="button" onClick={() => handleMove('right')}
-              className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▶</button>
-          </div>
-          <button type="button" onClick={() => handleMove('down')}
-            className="w-14 h-14 bg-gray-600 text-white text-2xl rounded-lg hover:bg-gray-500 active:bg-gray-400 transition-colors select-none">▼</button>
-        </div>
-        <div className="text-sm text-yellow-200">Use arrow keys or buttons to move the tank</div>
       </div>
 
       {showInstructions && (
