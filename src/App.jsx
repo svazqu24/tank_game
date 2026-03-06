@@ -14,6 +14,50 @@ const ANIMATION_STYLES = `
   }
   .mine-pop { animation: minePop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
   .screen-shake { animation: shake 1.2s cubic-bezier(.36,.07,.19,.97) both; }
+  .game-btn {
+    cursor: pointer;
+    border: none;
+    font-weight: 700;
+    border-radius: 6px;
+    color: white;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 6px 12px rgba(0,0,0,0.3);
+    position: relative;
+    top: 0;
+  }
+  .game-btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.35);
+    top: -2px;
+  }
+  .game-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
+    filter: brightness(0.95);
+    top: 3px;
+  }
+  .game-btn-lg {
+    cursor: pointer;
+    border: none;
+    font-weight: 700;
+    border-radius: 8px;
+    color: white;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.35);
+    position: relative;
+    top: 0;
+  }
+  .game-btn-lg:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 7px 0 rgba(0,0,0,0.4), 0 10px 20px rgba(0,0,0,0.4);
+    top: -2px;
+  }
+  .game-btn-lg:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25);
+    filter: brightness(0.95);
+    top: 4px;
+  }
 `;
 
 // Confetti canvas component
@@ -139,6 +183,67 @@ const Smoke = ({ active, tankPos }) => {
   );
 };
 
+// Mine explosion pixel burst
+const MineExplosion = ({ active, minePos }) => {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const particlesRef = useRef([]);
+
+  useEffect(() => {
+    if (!active) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const cellW = canvas.width / GRID_SIZE.width;
+    const cellH = canvas.height / GRID_SIZE.height;
+    const cx = minePos ? (minePos.x + 0.5) * cellW : canvas.width / 2;
+    const cy = minePos ? (minePos.y + 0.5) * cellH : canvas.height / 2;
+    const colors = ['#ef4444', '#f97316', '#eab308', '#fef08a', '#e76f51', '#fff'];
+
+    particlesRef.current = Array.from({ length: 40 }, () => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 8 + 3;
+      return {
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: Math.random() * 6 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        opacity: 1,
+        decay: Math.random() * 0.01 + 0.005,
+      };
+    });
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let allFaded = true;
+      particlesRef.current.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        ctx.restore();
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.3;
+        p.vx *= 0.97;
+        p.size *= 0.96;
+        p.opacity -= p.decay;
+        if (p.opacity > 0) allFaded = false;
+      });
+      if (!allFaded) animRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animRef.current);
+  }, [active]);
+
+  if (!active) return null;
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 3 }} />;
+};
+
 const TankIcon = ({ direction = 'right' }) => {
   const rotationDegrees = { up: 270, right: 0, down: 90, left: 180 };
   return (
@@ -201,6 +306,9 @@ const TankGame = () => {
   });
   const [revealedMines, setRevealedMines] = useState(new Set());
   const [tankVisualPos, setTankVisualPos] = useState({ x: 0, y: 4 });
+  const [wipePhase, setWipePhase] = useState('idle'); // idle | out | in
+  const [exploding, setExploding] = useState(false);
+  const [explodeKey, setExplodeKey] = useState(0);
 
   const getRandomFlagPos = useCallback((mines) => {
     let pos;
@@ -229,17 +337,62 @@ const TankGame = () => {
     trackMarks: new Map(),
   });
 
-  // Staggered mine reveal on game over
+  // Staggered mine reveal on game over or level complete
   useEffect(() => {
-    if (!gameState.gameOver) { setRevealedMines(new Set()); return; }
+    if (!gameState.gameOver && !gameState.won) { setRevealedMines(new Set()); setExploding(false); return; }
+    if (gameState.gameOver) { setExploding(true); setExplodeKey(k => k + 1); }
     gameState.mines.forEach((_, i) => {
       setTimeout(() => {
         setRevealedMines(prev => new Set([...prev, i]));
       }, i * 120);
     });
-  }, [gameState.gameOver]);
+  }, [gameState.gameOver, gameState.won]);
 
-  // Smooth tank movement
+  // Wipe transition on level complete
+  useEffect(() => {
+    if (!gameState.won) return;
+    setWipePhase('idle');
+  }, [gameState.won]);
+
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = () => {
+    const text = `🎮 Tank Sweeper 🏆 Reached Level ${gameState.level} on 📅 ${new Date().toLocaleDateString()}\nPlay at: svazqu24.github.io/tank_game/ and try to beat my score!`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      }).catch(() => {
+        // fallback
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      });
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  };
+
+  const handleNextLevel = () => {
+    setWipePhase('out');
+    setTimeout(() => {
+      initializeLevel(gameState.level + 1);
+      setWipePhase('in');
+      setTimeout(() => setWipePhase('idle'), 500);
+    }, 500);
+  };
   useEffect(() => {
     setTankVisualPos(gameState.tankPos);
   }, [gameState.tankPos]);
@@ -440,7 +593,10 @@ const TankGame = () => {
 
       {/* Header — fixed height */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '2px solid #2a9d8f' }}>
-        <div style={{ fontSize: '20px', fontWeight: '600', color: '#fef08a' }}>Idea by Sam</div>
+        <div>
+          <div style={{ fontSize: '20px', fontWeight: '600', color: '#fef08a' }}>Tank Sweeper</div>
+          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '1px' }}>Idea by Sam</div>
+        </div>
         <div style={{ display: 'flex', gap: '16px', fontSize: '22px', fontWeight: '700', color: '#fef08a' }}>
           <span>Level: {gameState.level}</span>
           <span>Moves: {gameState.moves}</span>
@@ -450,12 +606,19 @@ const TankGame = () => {
           </span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" onClick={handleShare}
+            className="game-btn"
+            style={{ padding: '8px 18px', background: shareCopied ? '#16a34a' : '#e76f51', fontSize: '18px', transition: 'background 0.2s, transform 0.1s, box-shadow 0.1s, filter 0.1s' }}>
+            {shareCopied ? '✓ Copied!' : 'Share'}
+          </button>
           <button type="button" onClick={() => setShowInstructions(true)}
-            style={{ padding: '8px 18px', background: '#eab308', color: 'white', fontWeight: '700', fontSize: '18px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
+            className="game-btn"
+            style={{ padding: '8px 18px', background: '#eab308', fontSize: '18px' }}>
             Instructions
           </button>
           <button type="button" onClick={() => initializeLevel(1)}
-            style={{ padding: '8px 18px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '18px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
+            className="game-btn"
+            style={{ padding: '8px 18px', background: '#2a9d8f', fontSize: '18px' }}>
             New Game
           </button>
         </div>
@@ -517,6 +680,21 @@ const TankGame = () => {
           }}>
             <TankIcon direction={gameState.tankDirection} />
           </div>
+
+          {/* Wipe transition overlay */}
+          {wipePhase !== 'idle' && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 20,
+              background: '#2a9d8f',
+              transform: wipePhase === 'out' ? 'translateX(0)' : 'translateX(100%)',
+              transition: 'transform 0.5s ease-in-out',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ color: 'white', fontWeight: 800, fontSize: '1.5rem' }}>
+                Level {gameState.level + 1}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Game Over overlay */}
@@ -528,11 +706,13 @@ const TankGame = () => {
             gap: '12px',
           }}>
             <Smoke active={gameState.gameOver} tankPos={gameState.tankPos} />
+            <MineExplosion key={explodeKey} active={exploding} minePos={gameState.tankPos} />
             <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <div style={{ fontSize: '2rem', fontWeight: '800', color: '#ef4444' }}>💥 Game Over!</div>
               <div style={{ color: '#fef08a', fontSize: '1rem' }}>You reached Level {gameState.level}</div>
               <button type="button" onClick={() => initializeLevel(1)}
-                style={{ padding: '10px 24px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '1rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+                className="game-btn-lg"
+                style={{ padding: '10px 24px', background: '#2a9d8f', fontSize: '1rem' }}>
                 Try Again
               </button>
             </div>
@@ -549,8 +729,9 @@ const TankGame = () => {
           }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', color: '#2a9d8f' }}>🏁 Level {gameState.level} Complete!</div>
             <div style={{ color: '#fef08a', fontSize: '1rem' }}>Completed in {gameState.moves} moves</div>
-            <button type="button" onClick={() => initializeLevel(gameState.level + 1)}
-              style={{ padding: '10px 24px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '1rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+            <button type="button" onClick={handleNextLevel}
+              className="game-btn-lg"
+              style={{ padding: '10px 24px', background: '#2a9d8f', fontSize: '1rem' }}>
               Next Level →
             </button>
           </div>
@@ -561,7 +742,7 @@ const TankGame = () => {
       {showInstructions && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 50 }}>
           <div style={{ background: '#374151', padding: '24px', borderRadius: '12px', maxWidth: '400px', width: '100%', color: '#fef08a' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '16px', textAlign: 'center' }}>How to Play</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '16px', textAlign: 'center' }}>How to Play Tank Sweeper</h2>
             <ul style={{ lineHeight: '2', marginBottom: '16px', paddingLeft: '4px', listStyle: 'none' }}>
               <li>• Use arrow keys or WASD to move your tank</li>
               <li>• Reach the flag to complete each level</li>
@@ -571,7 +752,8 @@ const TankGame = () => {
               <li>• Try to reach the highest level possible!</li>
             </ul>
             <button type="button" onClick={() => setShowInstructions(false)}
-              style={{ width: '100%', padding: '10px', background: '#2a9d8f', color: 'white', fontWeight: '700', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+              className="game-btn-lg"
+              style={{ width: '100%', padding: '10px', background: '#2a9d8f', fontSize: '1rem' }}>
               Got it!
             </button>
           </div>
