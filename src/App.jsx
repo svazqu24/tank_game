@@ -1,10 +1,81 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+const ANIMATION_STYLES = `
+  @keyframes minePop {
+    0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+    60% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  @keyframes tankSlide {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+  .mine-pop { animation: minePop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+`;
+
+// Confetti canvas component
+const Confetti = ({ active }) => {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const particlesRef = useRef([]);
+
+  useEffect(() => {
+    if (!active) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#2a9d8f', '#eab308', '#ef4444', '#fef08a', '#264653', '#e76f51'];
+    particlesRef.current = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      size: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      speed: Math.random() * 4 + 2,
+      drift: (Math.random() - 0.5) * 2,
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 6,
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particlesRef.current.forEach((p) => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+        p.y += p.speed;
+        p.x += p.drift;
+        p.rotation += p.rotSpeed;
+        // Respawn at top when it falls off bottom
+        if (p.y > canvas.height + 20) {
+          p.y = -20;
+          p.x = Math.random() * canvas.width;
+        }
+      });
+      animRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animRef.current);
+  }, [active]);
+
+  if (!active) return null;
+  return (
+    <canvas ref={canvasRef} style={{
+      position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 40,
+    }} />
+  );
+};
 
 const TankIcon = ({ direction = 'right' }) => {
   const rotationDegrees = { up: 270, right: 0, down: 90, left: 180 };
   return (
     <svg viewBox="0 0 16 16" width="40" height="40" fill="none" stroke="none"
-      style={{ transform: `rotate(${rotationDegrees[direction]}deg)` }}>
+      style={{ transform: `rotate(${rotationDegrees[direction]}deg)`, transition: 'transform 150ms ease' }}>
       <rect x="2" y="4" width="12" height="8" fill="#264653" />
       <rect x="1" y="11" width="14" height="2" fill="#2a9d8f" />
       <rect x="1" y="3" width="14" height="2" fill="#2a9d8f" />
@@ -60,14 +131,8 @@ const TankGame = () => {
   const [highScoreDate, setHighScoreDate] = useState(() => {
     return localStorage.getItem('tankGameHighScoreDate') || null;
   });
-
-  useEffect(() => {
-    if (!seenInstructions) {
-      setShowInstructions(true);
-      setSeenInstructions(true);
-      localStorage.setItem('tankGameSeenInstructions', 'true');
-    }
-  }, []);
+  const [revealedMines, setRevealedMines] = useState(new Set());
+  const [tankVisualPos, setTankVisualPos] = useState({ x: 0, y: 4 });
 
   const getRandomFlagPos = useCallback((mines) => {
     let pos;
@@ -95,6 +160,29 @@ const TankGame = () => {
     visitedCells: new Set(),
     trackMarks: new Map(),
   });
+
+  // Staggered mine reveal on game over
+  useEffect(() => {
+    if (!gameState.gameOver) { setRevealedMines(new Set()); return; }
+    gameState.mines.forEach((_, i) => {
+      setTimeout(() => {
+        setRevealedMines(prev => new Set([...prev, i]));
+      }, i * 120);
+    });
+  }, [gameState.gameOver]);
+
+  // Smooth tank movement
+  useEffect(() => {
+    setTankVisualPos(gameState.tankPos);
+  }, [gameState.tankPos]);
+
+  useEffect(() => {
+    if (!seenInstructions) {
+      setShowInstructions(true);
+      setSeenInstructions(true);
+      localStorage.setItem('tankGameSeenInstructions', 'true');
+    }
+  }, []);
 
   const countNearbyMines = (x, y, mines) => {
     let count = 0;
@@ -233,7 +321,7 @@ const TankGame = () => {
         const isVisited = gameState.visitedCells.has(cellKey);
         const trackDirection = gameState.trackMarks.get(cellKey);
         const mineCount = countNearbyMines(x, y, gameState.mines);
-        const showMine = (gameState.gameOver || gameState.won) && isMine;
+        const mineIndex = gameState.mines.findIndex(m => m.x === x && m.y === y);
         const adjacentToTank =
           Math.abs(gameState.tankPos.x - x) <= 1 &&
           Math.abs(gameState.tankPos.y - y) <= 1;
@@ -241,10 +329,13 @@ const TankGame = () => {
         // Fog of war: only active from level 5+
         const fogActive = gameState.level >= 5;
         const isRevealed = isVisited || adjacentToTank || isTank;
-        const inFog = fogActive && !isRevealed && !showMine;
+        const inFog = fogActive && !isRevealed;
 
         // Show mine counts on visited cells; before fog kicks in also show adjacent
-        const showMineCount = !showMine && !isEnd && mineCount > 0 && (isVisited || (!fogActive && adjacentToTank));
+        const showMineCount = !isEnd && mineCount > 0 && (isVisited || (!fogActive && adjacentToTank));
+
+        // Staggered mine reveal on game over/won
+        const showMine = (gameState.gameOver || gameState.won) && isMine && revealedMines.has(mineIndex);
 
         const cellClasses = [
           'border', 'flex', 'items-center', 'justify-center', 'relative',
@@ -259,8 +350,7 @@ const TankGame = () => {
           <div key={cellKey} className={cellClasses}>
             {isVisited && !isTank && trackDirection && <TrackMark direction={trackDirection} />}
             <div className="relative w-full h-full flex items-center justify-center">
-              {isTank && <TankIcon direction={gameState.tankDirection} />}
-              {showMine && <MineIcon />}
+              {showMine && <div className="mine-pop"><MineIcon /></div>}
               {isEnd && (!fogActive || isRevealed) && <FlagIcon />}
             </div>
             {showMineCount && (
@@ -275,20 +365,11 @@ const TankGame = () => {
     return cells;
   };
 
-  // D-pad button component
-  const DpadButton = ({ dir, label }) => (
-    <button
-      type="button"
-      onPointerDown={() => handleMove(dir)}
-      className="w-12 h-12 bg-gray-600 hover:bg-gray-500 active:bg-gray-400 text-white font-bold rounded flex items-center justify-center select-none touch-none"
-    >
-      {label}
-    </button>
-  );
-
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1f2937', overflow: 'hidden' }}>
-      
+      <style>{ANIMATION_STYLES}</style>
+      <Confetti active={gameState.won} />
+
       {/* Header — fixed height */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '2px solid #2a9d8f' }}>
         <div style={{ fontSize: '20px', fontWeight: '600', color: '#fef08a' }}>Idea by Sam</div>
@@ -312,10 +393,10 @@ const TankGame = () => {
         </div>
       </div>
 
-      {/* Main content — takes all remaining height */}
+      {/* Main content */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', minHeight: 0, position: 'relative' }}>
         
-        {/* Square grid with swipe support */}
+        {/* Grid wrapper — position:relative so tank overlay works */}
         <div
           style={{
             width: 'min(calc(100vw - 24px), calc(100vh - 80px))',
@@ -324,6 +405,7 @@ const TankGame = () => {
             borderRadius: '8px',
             overflow: 'hidden',
             boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            position: 'relative',
           }}
           onTouchStart={(e) => {
             const t = e.touches[0];
@@ -350,6 +432,20 @@ const TankGame = () => {
             height: '100%',
           }}>
             {renderGrid()}
+          </div>
+
+          {/* Smooth tank overlay — absolutely positioned over the grid */}
+          <div style={{
+            position: 'absolute',
+            width: `${100 / GRID_SIZE.width}%`,
+            height: `${100 / GRID_SIZE.height}%`,
+            left: `${(tankVisualPos.x / GRID_SIZE.width) * 100}%`,
+            top: `${(tankVisualPos.y / GRID_SIZE.height) * 100}%`,
+            transition: 'left 120ms ease, top 120ms ease',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <TankIcon direction={gameState.tankDirection} />
           </div>
         </div>
 
@@ -397,7 +493,7 @@ const TankGame = () => {
               <li>• Use arrow keys or WASD to move your tank</li>
               <li>• Reach the flag to complete each level</li>
               <li>• Avoid mines — numbers tell you how close they are</li>
-              <li>• Fog will apear in later levels</li>
+              <li>• The map gets darker as levels increase</li>
               <li>• Watch out — the flag may start to move!</li>
               <li>• Try to reach the highest level possible!</li>
             </ul>
