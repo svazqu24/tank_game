@@ -397,7 +397,7 @@ const TankGame = () => {
               <li>• Use arrow keys or WASD to move your tank</li>
               <li>• Reach the flag to complete each level</li>
               <li>• Avoid mines — numbers tell you how close they are</li>
-              <li>• The map gets darker as levels increase</li>
+              <li>• Fog will apear in later levels</li>
               <li>• Watch out — the flag may start to move!</li>
               <li>• Try to reach the highest level possible!</li>
             </ul>
