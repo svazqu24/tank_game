@@ -1,15 +1,17 @@
 # Tank Game
+A React-based tank navigation game built with Vite and Tailwind CSS. Navigate your tank to the flag while avoiding mines in an increasingly challenging minesweeper-style game. A small passion project of mine started back in Sophmore year of college. **Made with Claude**
 
-A React-based tank navigation game built with Vite and Tailwind CSS. Navigate your tank to the flag while avoiding mines in an increasingly challenging minesweeper-style game.
+## Play Online
+🎮 **[svazqu24.github.io/tank_game](https://svazqu24.github.io/tank_game/)**
 
 ## Features
-
-- Progressive difficulty levels with increasing mine counts
-- Tank movement using arrow keys
-- Mine detection showing nearby mine counts
-- Flag teleportation after level 5 (every 8 seconds)
+- Progressive difficulty with increasing mine counts up to 12
+- Arrow keys, WASD, or swipe gestures to move your tank
+- Mine detection showing nearby mine counts on visited/adjacent cells
+- Flag spawns a minimum of 4 steps away from the tank
+- Flag teleports randomly after level 5 (every 8 seconds)
 - High score tracking with local storage
-- Clean, responsive UI with Tailwind CSS
+- Responsive layout that fills any screen size
 
 ## Quick Start
 
@@ -31,29 +33,32 @@ npm run preview
 ```
 
 ## How to Play
-
-1. Use **arrow keys** to move your tank
-2. Navigate to the **flag** (red square) to complete each level
-3. Avoid **mines** (orange squares)
-4. Numbers on unvisited adjacent cells show nearby mine counts
-5. After level 5, the flag will randomly move every 8 seconds
-6. Each level adds more mines (up to 12 total)
+1. Use **arrow keys**, **WASD**, or **swipe** on mobile to move your tank
+2. Navigate to the **flag** to complete each level
+3. Avoid **mines** — hitting one ends the game
+4. Numbers show how many mines are nearby on visited or adjacent cells
+5. After level 5, the flag randomly moves every 8 seconds
+6. Each level adds 2 more mines (up to 12 total)
 7. Try to reach the highest level possible!
 
 ## Game Mechanics
-
-- **Levels**: 1-5 have the flag in a fixed position; level 5+ have a moving flag
-- **Mines**: Start with 2 mines on level 1, increasing by 2 per level (max 12)
-- **Scoring**: Your high score is the highest level you've reached
-- **Detection**: Nearby mine counts only show on visited cells or adjacent to your current position
+- **Levels 1–4**: Flag is fixed on the right side of the board
+- **Level 5+**: Flag spawns randomly and moves every 8 seconds
+- **Flag distance**: Always spawns at least 4 steps away from the tank's start
+- **Mines**: 2 on level 1, +2 per level, capped at 12
+- **Scoring**: High score is the highest level reached, saved across sessions
 
 ## Project Structure
-
 ```
 src/
-├── App.jsx          - Main game component and all game logic
-├── main.jsx         - React entry point
+├── TankGame.jsx     - Main game component and all game logic
+├── App.jsx          - React entry point wrapper
+├── main.jsx         - React DOM entry point
 └── index.css        - Tailwind CSS configuration
-
-tailwind.config.js   - Tailwind CSS configuration
+public/
+└── tank-canon-svgrepo-com.svg  - Favicon
+.github/
+└── workflows/
+    └── deploy.yml   - GitHub Actions auto-deploy to GitHub Pages
+vite.config.js       - Vite config with GitHub Pages base path
 ```
