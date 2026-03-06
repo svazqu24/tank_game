@@ -259,19 +259,19 @@ const TankGame = () => {
       
       {/* Header — fixed height */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '2px solid #2a9d8f' }}>
-        <div style={{ fontSize: '12px', fontWeight: '600', color: '#fef08a' }}>Idea by Sam</div>
-        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', fontWeight: '700', color: '#fef08a' }}>
+        <div style={{ fontSize: '20px', fontWeight: '600', color: '#fef08a' }}>Idea by Sam</div>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '24px', fontWeight: '700', color: '#fef08a' }}>
           <span>Level: {gameState.level}</span>
           <span>Moves: {gameState.moves}</span>
           <span>Best: {highScore}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" onClick={() => setShowInstructions(true)}
-            style={{ padding: '4px 10px', background: '#eab308', color: 'white', fontWeight: '600', fontSize: '12px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
+            style={{ padding: '8px 18px', background: '#eab308', color: 'white', fontWeight: '700', fontSize: '18px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
             Instructions
           </button>
           <button type="button" onClick={() => initializeLevel(1)}
-            style={{ padding: '4px 10px', background: '#2a9d8f', color: 'white', fontWeight: '600', fontSize: '12px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
+            style={{ padding: '8px 18px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '18px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
             New Game
           </button>
         </div>
