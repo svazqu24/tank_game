@@ -50,10 +50,7 @@ const GRID_SIZE = { width: 8, height: 8 };
 
 const TankGame = () => {
   const [showInstructions, setShowInstructions] = useState(false);
-  const [highScore, setHighScore] = useState(() => {
-    const saved = localStorage.getItem('tankGameHighScore');
-    return saved ? parseInt(saved, 10) : 1;
-  });
+  const [highScore, setHighScore] = useState(1);
 
   const getRandomFlagPos = useCallback((mines) => {
     let pos;
@@ -81,7 +78,7 @@ const TankGame = () => {
     trackMarks: new Map(),
   });
 
-  const countNearbyMines = (x, y) => {
+  const countNearbyMines = (x, y, mines) => {
     let count = 0;
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
@@ -94,7 +91,7 @@ const TankGame = () => {
       if (
         newX >= 0 && newX < GRID_SIZE.width &&
         newY >= 0 && newY < GRID_SIZE.height &&
-        gameState.mines.some((mine) => mine.x === newX && mine.y === newY)
+        mines.some((mine) => mine.x === newX && mine.y === newY)
       ) count++;
     });
     return count;
@@ -133,13 +130,12 @@ const TankGame = () => {
       visitedCells: new Set(['0,4']),
       trackMarks: new Map(),
     });
-    if (level > highScore) {
-      setHighScore(level);
-      localStorage.setItem('tankGameHighScore', level.toString());
-    }
-  }, [getRandomFlagPos, highScore]);
+    setHighScore(prev => {
+      const next = Math.max(prev, level);
+      return next;
+    });
+  }, [getRandomFlagPos]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { initializeLevel(1); }, []);
 
   useEffect(() => {
@@ -207,14 +203,14 @@ const TankGame = () => {
         const isEnd = x === gameState.flagPos.x && y === gameState.flagPos.y;
         const isVisited = gameState.visitedCells.has(cellKey);
         const trackDirection = gameState.trackMarks.get(cellKey);
-        const mineCount = countNearbyMines(x, y);
+        const mineCount = countNearbyMines(x, y, gameState.mines);
         const showMine = (gameState.gameOver || gameState.won) && isMine;
         const adjacentToTank =
           Math.abs(gameState.tankPos.x - x) <= 1 &&
           Math.abs(gameState.tankPos.y - y) <= 1;
         const showMineCount = !showMine && !isEnd && mineCount > 0 && (isVisited || adjacentToTank);
         const cellClasses = [
-          'w-full', 'h-full', 'border', 'flex', 'items-center', 'justify-center', 'relative',
+          'border', 'flex', 'items-center', 'justify-center', 'relative',
           isVisited ? 'bg-orange-200 border-orange-400' : 'bg-yellow-200 border-yellow-300',
           isTank ? 'bg-yellow-200' : '',
           isEnd ? 'bg-teal-500' : '',
@@ -239,35 +235,56 @@ const TankGame = () => {
     return cells;
   };
 
+  // D-pad button component
+  const DpadButton = ({ dir, label }) => (
+    <button
+      type="button"
+      onPointerDown={() => handleMove(dir)}
+      className="w-12 h-12 bg-gray-600 hover:bg-gray-500 active:bg-gray-400 text-white font-bold rounded flex items-center justify-center select-none touch-none"
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="w-full min-h-screen bg-gray-800 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
-        <div className="text-sm font-semibold text-yellow-200">idea by Sam</div>
-        <div className="flex gap-4 text-base font-bold text-yellow-200">
-          <div>Level: {gameState.level}</div>
-          <div>Moves: {gameState.moves}</div>
-          <div>Best: {highScore}</div>
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1f2937', overflow: 'hidden' }}>
+      
+      {/* Header — fixed height */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '2px solid #2a9d8f' }}>
+        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fef08a' }}>idea by Sam</div>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '15px', fontWeight: '700', color: '#fef08a' }}>
+          <span>Level: {gameState.level}</span>
+          <span>Moves: {gameState.moves}</span>
+          <span>Best: {highScore}</span>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" onClick={() => setShowInstructions(true)}
-            className="px-3 py-1 bg-yellow-500 text-white font-bold rounded hover:bg-yellow-400 transition-colors">
+            style={{ padding: '4px 12px', background: '#eab308', color: 'white', fontWeight: '700', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
             Instructions
           </button>
           <button type="button" onClick={() => initializeLevel(1)}
-            className="px-3 py-1 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
+            style={{ padding: '4px 12px', background: '#2a9d8f', color: 'white', fontWeight: '700', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
             New Game
           </button>
         </div>
       </div>
 
-      {/* Game area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="border-4 border-teal-500 rounded-lg shadow-xl overflow-hidden w-full h-full"
-          style={{ maxWidth: '100%', maxHeight: '100%', aspectRatio: '1 / 1' }}>
+      {/* Main content — takes all remaining height */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', minHeight: 0, position: 'relative' }}>
+        
+        {/* Square grid — sized to fit within available space */}
+        <div style={{
+          width: 'min(calc(100vw - 24px), calc(100vh - 80px))',
+          height: 'min(calc(100vw - 24px), calc(100vh - 80px))',
+          border: '4px solid #2a9d8f',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+        }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${GRID_SIZE.width}, 1fr)`,
+            gridTemplateRows: `repeat(${GRID_SIZE.height}, 1fr)`,
             width: '100%',
             height: '100%',
           }}>
@@ -275,32 +292,47 @@ const TankGame = () => {
           </div>
         </div>
 
+        {/* Game Over overlay */}
         {gameState.gameOver && (
-          <div className="absolute text-center">
-            <div className="text-lg font-bold text-red-500">Game Over!</div>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '12px',
+          }}>
+            <div style={{ fontSize: '2rem', fontWeight: '800', color: '#ef4444' }}>💥 Game Over!</div>
+            <div style={{ color: '#fef08a', fontSize: '1rem' }}>You reached Level {gameState.level}</div>
             <button type="button" onClick={() => initializeLevel(1)}
-              className="mt-2 px-3 py-1 bg-teal-500 text-white rounded hover:bg-teal-400 transition-colors">
+              style={{ padding: '10px 24px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '1rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
               Try Again
             </button>
           </div>
         )}
 
+        {/* Level Complete overlay */}
         {gameState.won && (
-          <div className="absolute text-center">
-            <div className="text-lg font-bold text-teal-500">Level {gameState.level} Complete!</div>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '12px',
+          }}>
+            <div style={{ fontSize: '2rem', fontWeight: '800', color: '#2a9d8f' }}>🏁 Level {gameState.level} Complete!</div>
+            <div style={{ color: '#fef08a', fontSize: '1rem' }}>Completed in {gameState.moves} moves</div>
             <button type="button" onClick={() => initializeLevel(gameState.level + 1)}
-              className="mt-2 px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
+              style={{ padding: '10px 24px', background: '#2a9d8f', color: 'white', fontWeight: '700', fontSize: '1rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
               Next Level →
             </button>
           </div>
         )}
       </div>
 
+      {/* Instructions modal */}
       {showInstructions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md text-yellow-200">
-            <h2 className="text-xl font-bold mb-4">How to Play</h2>
-            <ul className="space-y-2 mb-4">
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 50 }}>
+          <div style={{ background: '#374151', padding: '24px', borderRadius: '12px', maxWidth: '400px', width: '100%', color: '#fef08a' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '16px' }}>How to Play</h2>
+            <ul style={{ lineHeight: '2', marginBottom: '16px', paddingLeft: '4px', listStyle: 'none' }}>
               <li>• Use arrow keys or the D-pad to move your tank</li>
               <li>• Reach the flag to complete each level</li>
               <li>• Numbers show how many mines are nearby</li>
@@ -309,7 +341,7 @@ const TankGame = () => {
               <li>• Try to reach the highest level possible!</li>
             </ul>
             <button type="button" onClick={() => setShowInstructions(false)}
-              className="w-full px-4 py-2 bg-teal-500 text-white font-bold rounded hover:bg-teal-400 transition-colors">
+              style={{ width: '100%', padding: '10px', background: '#2a9d8f', color: 'white', fontWeight: '700', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
               Got it!
             </button>
           </div>
