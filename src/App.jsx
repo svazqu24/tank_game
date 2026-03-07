@@ -558,7 +558,7 @@ const TankGame = () => {
 
   const handleShare = () => {
     const modeLabel = gameMode === 'hard' ? '🔴 Hard Mode' : '🟢 Easy Mode';
-    const text = `🎮 Tank Sweeper ${modeLabel} 🏆 Reached Level ${gameState.level} on 📅 ${new Date().toLocaleDateString()}\nPlay at: svazqu24.github.io/tank_sweeper/ and try to beat my score!`;
+    const text = `🎮 Tank Sweeper ${modeLabel} 🏆 Reached Level ${gameState.level} on 📅 ${new Date().toLocaleDateString()}\nPlay at: tanksweeper.netlify.app and try to beat my score!`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         setShareCopied(true);
