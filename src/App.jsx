@@ -530,6 +530,11 @@ const TankGame = () => {
   useEffect(() => {
     if (!gameState.gameOver && !gameState.won) { setRevealedMines(new Set()); setExploding(false); return; }
     if (gameState.gameOver) { setTimeout(() => { setExploding(true); setExplodeKey(k => k + 1); }, 16); }
+    if (gameState.won) {
+      const audio = new Audio(`${import.meta.env.BASE_URL}yippee.mp3`);
+      audio.volume = 0.6;
+      audio.play().catch(() => {});
+    }
     const timers = gameState.mines.map((_, i) =>
       setTimeout(() => {
         setRevealedMines(prev => new Set([...prev, i]));
