@@ -12,8 +12,28 @@ const ANIMATION_STYLES = `
     30%, 50%, 70% { transform: translate3d(-8px, -2px, 0); }
     40%, 60% { transform: translate3d(8px, 2px, 0); }
   }
-  .mine-pop { animation: minePop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  .screen-shake { animation: shake 1.2s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes trackFadeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 0.3; transform: scale(1); }
+  }
+  @keyframes titleGlow {
+    0%, 100% { text-shadow: 0 0 8px #2a9d8f, 0 0 20px #2a9d8f; }
+    50% { text-shadow: 0 0 20px #2a9d8f, 0 0 40px #2a9d8f, 0 0 60px #2a9d8f; }
+  }
+  @keyframes titleFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; } 50% { opacity: 0; }
+  }
+  .track-fade { animation: trackFadeIn 0.25s ease-out forwards; }
+  .title-glow { animation: titleGlow 2.5s ease-in-out infinite; }
+  .title-fadein { animation: titleFadeUp 0.7s ease-out forwards; }
+  .title-fadein-delay { animation: titleFadeUp 0.7s ease-out 0.3s both; }
+  .title-fadein-delay2 { animation: titleFadeUp 0.7s ease-out 0.6s both; }
+  .title-fadein-delay3 { animation: titleFadeUp 0.7s ease-out 0.9s both; }
+  .blink { animation: blink 1.1s step-end infinite; }
   .game-btn {
     cursor: pointer;
     border: none;
@@ -259,10 +279,10 @@ const TankIcon = ({ direction = 'right' }) => {
   );
 };
 
-const TrackMark = ({ direction }) => {
+const TrackMark = ({ direction, fresh }) => {
   const isVertical = direction === 'up' || direction === 'down';
   return (
-    <div className={`absolute ${isVertical ? 'w-3 h-4' : 'w-4 h-3'} flex justify-between opacity-30`}>
+    <div className={`absolute ${isVertical ? 'w-3 h-4' : 'w-4 h-3'} flex justify-between ${fresh ? 'track-fade' : 'opacity-30'}`}>
       <div className="bg-gray-700 w-1 h-full" />
       <div className="bg-gray-700 w-1 h-full" />
     </div>
@@ -293,7 +313,99 @@ const FlagIcon = () => (
 
 const GRID_SIZE = { width: 8, height: 8 };
 
+const PRESS_TEXT = "Press any key to start";
+
+const TitleScreen = ({ onStart, highScore, highScoreDate }) => {
+  const [typedText, setTypedText] = useState('');
+  const [doneTyping, setDoneTyping] = useState(false);
+
+  useEffect(() => {
+    let i = 0;
+    const startDelay = setTimeout(() => {
+      const interval = setInterval(() => {
+        i++;
+        setTypedText(PRESS_TEXT.slice(0, i));
+        if (i >= PRESS_TEXT.length) { clearInterval(interval); setDoneTyping(true); }
+      }, 55);
+      return () => clearInterval(interval);
+    }, 900);
+    return () => clearTimeout(startDelay);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => onStart();
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onStart]);
+
+  return (
+    <div onClick={onStart} style={{
+      width: '100vw', height: '100vh', background: '#0f172a',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 14, position: 'relative', overflow: 'hidden', cursor: 'pointer', fontFamily: 'monospace',
+    }}>
+      {/* Scanline overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)',
+      }} />
+      {/* Grid background */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage: 'linear-gradient(rgba(42,157,143,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(42,157,143,0.05) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+      }} />
+
+      {/* Tank icon */}
+      <div className="title-fadein" style={{ zIndex: 2 }}>
+        <svg viewBox="0 0 16 16" width="72" height="72" fill="none"
+          style={{ filter: 'drop-shadow(0 0 8px #2a9d8f)' }}>
+          <rect x="2" y="4" width="12" height="8" fill="#264653" />
+          <rect x="1" y="11" width="14" height="2" fill="#2a9d8f" />
+          <rect x="1" y="3" width="14" height="2" fill="#2a9d8f" />
+          <rect x="6" y="5" width="4" height="4" fill="#2a9d8f" />
+          <rect x="9" y="6" width="6" height="2" fill="#2a9d8f" />
+        </svg>
+      </div>
+
+      {/* Title */}
+      <div className="title-fadein-delay title-glow" style={{
+        zIndex: 2, fontSize: 42, fontWeight: 900, color: '#fef08a',
+        letterSpacing: 4,
+      }}>
+        TANK SWEEPER
+      </div>
+
+      {/* Subtitle */}
+      <div className="title-fadein-delay2" style={{
+        zIndex: 2, fontSize: 13, color: '#2a9d8f', letterSpacing: 4,
+        textTransform: 'uppercase',
+      }}>
+        Idea by Sam
+      </div>
+
+      {/* Typewriter press to start */}
+      <div className="title-fadein-delay3" style={{
+        zIndex: 2, marginTop: 24, fontSize: 14, color: '#9ca3af',
+        display: 'flex', alignItems: 'center', gap: 2, minHeight: 20,
+      }}>
+        {typedText}<span className={doneTyping ? 'blink' : ''}>_</span>
+      </div>
+
+      {/* Best score */}
+      {highScore > 1 && (
+        <div className="title-fadein-delay3" style={{
+          zIndex: 2, fontSize: 12, color: '#4b5563',
+        }}>
+          BEST: LVL {highScore}{highScoreDate ? ` · ${highScoreDate}` : ''}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TankGame = () => {
+  const [showTitle, setShowTitle] = useState(true);
   const [showInstructions, setShowInstructions] = useState(false);
   const [seenInstructions, setSeenInstructions] = useState(() => {
     return !!localStorage.getItem('tankGameSeenInstructions');
@@ -307,9 +419,10 @@ const TankGame = () => {
   });
   const [revealedMines, setRevealedMines] = useState(new Set());
   const [tankVisualPos, setTankVisualPos] = useState({ x: 0, y: 4 });
-  const [wipePhase, setWipePhase] = useState('idle'); // idle | out | in
+  const [wipePhase, setWipePhase] = useState('idle');
   const [exploding, setExploding] = useState(false);
   const [explodeKey, setExplodeKey] = useState(0);
+  const [lastTrackCell, setLastTrackCell] = useState(null);
 
   const getRandomFlagPos = useCallback((mines) => {
     let pos;
@@ -495,6 +608,7 @@ const TankGame = () => {
       else if (direction === 'right' && newPos.x < GRID_SIZE.width - 1) { newPos.x += 1; moved = true; }
       if (!moved) return prev;
       const oldCellKey = `${prev.tankPos.x},${prev.tankPos.y}`;
+      setLastTrackCell(oldCellKey);
       const newTrackMarks = new Map(prev.trackMarks);
       newTrackMarks.set(oldCellKey, direction);
       const newVisitedCells = new Set(prev.visitedCells);
@@ -571,7 +685,13 @@ const TankGame = () => {
         ].filter(Boolean).join(' ');
         cells.push(
           <div key={cellKey} className={cellClasses}>
-            {isVisited && !isTank && trackDirection && <TrackMark direction={trackDirection} />}
+            {isVisited && !isTank && trackDirection && (
+              <TrackMark
+                key={lastTrackCell === cellKey ? `${cellKey}-fresh` : cellKey}
+                direction={trackDirection}
+                fresh={lastTrackCell === cellKey}
+              />
+            )}
             <div className="relative w-full h-full flex items-center justify-center">
               {showMine && <div className="mine-pop"><MineIcon /></div>}
               {isEnd && (!fogActive || isRevealed) && <FlagIcon />}
@@ -591,6 +711,14 @@ const TankGame = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1f2937', overflow: 'hidden' }}>
       <style>{ANIMATION_STYLES}</style>
+      {showTitle && (
+        <TitleScreen
+          onStart={() => { setShowTitle(false); initializeLevel(1); }}
+          highScore={highScore}
+          highScoreDate={highScoreDate}
+        />
+      )}
+      {!showTitle && (<>
       <Confetti active={gameState.won} />
 
       {/* Header — fixed height */}
@@ -602,10 +730,7 @@ const TankGame = () => {
         <div style={{ display: 'flex', gap: '16px', fontSize: '22px', fontWeight: '700', color: '#fef08a' }}>
           <span>Level: {gameState.level}</span>
           <span>Moves: {gameState.moves}</span>
-          <span>
-            Best: {highScore}
-            {highScoreDate && <span style={{ fontSize: '11px', fontWeight: '400', marginLeft: '4px', opacity: 0.7 }}>({highScoreDate})</span>}
-          </span>
+          <span>Highest: lvl {highScore}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" onClick={handleShare}
@@ -767,6 +892,7 @@ const TankGame = () => {
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 };
