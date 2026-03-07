@@ -357,7 +357,7 @@ const TankGame = () => {
   const [shareCopied, setShareCopied] = useState(false);
 
   const handleShare = () => {
-    const text = `🎮 Tank Sweeper 🏆 Reached Level ${gameState.level} on 📅 ${new Date().toLocaleDateString()}\nPlay at: svazqu24.github.io/tank_game/ and try to beat my score!`;
+    const text = `🎮 Tank Sweeper 🏆 Reached Level ${gameState.level} on 📅 ${new Date().toLocaleDateString()}\nPlay at: svazqu24.github.io/tank_sweeper/ and try to beat my score!`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         setShareCopied(true);
