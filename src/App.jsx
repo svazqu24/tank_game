@@ -150,7 +150,7 @@ const Smoke = ({ active, tankPos }) => {
       };
     };
 
-    particlesRef.current = Array.from({ length: 30 }, spawnSmoke);
+    particlesRef.current = Array.from({ length: 20 }, spawnSmoke);
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -204,7 +204,7 @@ const MineExplosion = ({ active, minePos }) => {
     const cy = minePos ? (minePos.y + 0.5) * cellH : canvas.height / 2;
     const colors = ['#ef4444', '#f97316', '#eab308', '#fef08a', '#e76f51', '#fff'];
 
-    particlesRef.current = Array.from({ length: 40 }, () => {
+    particlesRef.current = Array.from({ length: 25 }, () => {
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 8 + 3;
       return {
@@ -341,7 +341,7 @@ const TankGame = () => {
   // Staggered mine reveal on game over or level complete
   useEffect(() => {
     if (!gameState.gameOver && !gameState.won) { setRevealedMines(new Set()); setExploding(false); return; }
-    if (gameState.gameOver) { setExploding(true); setExplodeKey(k => k + 1); }
+    if (gameState.gameOver) { setTimeout(() => { setExploding(true); setExplodeKey(k => k + 1); }, 16); }
     const timers = gameState.mines.map((_, i) =>
       setTimeout(() => {
         setRevealedMines(prev => new Set([...prev, i]));
@@ -631,8 +631,14 @@ const TankGame = () => {
         
         {/* Grid wrapper — position:relative so tank overlay works */}
         <div
-          key={gameState.gameOver ? 'shaking' : 'still'}
-          className={gameState.gameOver ? 'screen-shake' : ''}
+          ref={(el) => {
+            if (!el) return;
+            if (gameState.gameOver) {
+              el.classList.add('screen-shake');
+              const clear = () => el.classList.remove('screen-shake');
+              el.addEventListener('animationend', clear, { once: true });
+            }
+          }}
           style={{
             width: 'min(calc(100vw - 24px), calc(100vh - 80px))',
             height: 'min(calc(100vw - 24px), calc(100vh - 80px))',
