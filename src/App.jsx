@@ -974,6 +974,10 @@ const TankGame = () => {
               <TankIcon direction={gameState.tankDirection} />
             </div>
 
+            {/* Particles — must be inside grid wrapper for correct sizing */}
+            <Smoke active={gameState.gameOver} tankPos={gameState.tankPos} />
+            <MineExplosion key={explodeKey} active={exploding} minePos={gameState.tankPos} />
+
             {/* Wipe transition */}
             {wipePhase !== 'idle' && (
               <div style={{
@@ -991,8 +995,6 @@ const TankGame = () => {
           {/* Game Over overlay */}
           {gameState.gameOver && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-              <Smoke active={gameState.gameOver} tankPos={gameState.tankPos} />
-              <MineExplosion key={explodeKey} active={exploding} minePos={gameState.tankPos} />
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                 <div style={{ fontSize: '2rem', fontWeight: '800', color: '#ef4444' }}>💥 Game Over!</div>
                 <div style={{ color: '#fef08a', fontSize: '1rem' }}>You reached Level {gameState.level}</div>
